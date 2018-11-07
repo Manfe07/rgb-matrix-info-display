@@ -7,6 +7,7 @@ import requests
 from rgbmatrix import graphics
 from controller.matrix import MatrixController
 from controller.gifparser import GifParser
+from controller.mqttcontroller import MqttController
 
 
 class InfoDisplay:
@@ -14,17 +15,31 @@ class InfoDisplay:
     __currentSong = 'Hier könnte Ihre Werbung stehen.   '
     __weatherTemp = None
 
+    __global_font_color = (10, 10, 10)
+
     def __init__(self, matrix_controller: MatrixController):
         self.display = matrix_controller
         _thread.start_new_thread(self.__render_loop, ())
         _thread.start_new_thread(self.__external_data_fetcher, ())
+
+        mqtt = MqttController()
+        mqtt.subscribe_to_topic('smarthome/haus/niklas/og/schlafzimmer/licht/rgb-display/color',
+                                self.__callback_set_font_color)
         print('Render thread is running.')
 
     @staticmethod
     def __load_font(filename):
         font = graphics.Font()
-        font.LoadFont(os.path.dirname(os.path.realpath(__file__)) + 'fonts/' + filename)
+        font.LoadFont(os.path.dirname(os.path.realpath(__file__)) + '/../fonts/' + filename)
         return font
+
+    def __callback_set_font_color(self, msg):
+        values = msg.decode('UTF-8').split(";")
+        if len(values) == 3:
+            col_red = int(float(values[0]))
+            col_green = int(float(values[1]))
+            col_blue = int(float(values[2]))
+            self.__global_font_color = (col_red * 255 / 4096, col_green * 255 / 4096, col_blue * 255 / 4096)
 
     def __external_data_fetcher(self):
         while True:
@@ -43,17 +58,18 @@ class InfoDisplay:
     def __render_loop(self):
         font_big = self.__load_font('8x13B.bdf')
         font_small = self.__load_font('5x7.bdf')
-        text_color = graphics.Color(10, 5, 5)
-        # text_color = graphics.Color(80, 80, 100)
 
         marqueetext_pos = self.display.canvas.width
 
-        gif = GifParser('assets/eq.gif')
+        gif = GifParser(os.path.dirname(os.path.realpath(__file__)) + '/../assets/eq.gif')
         gif_counter = 0
         gif_delay = 0
 
         while True:
             self.display.canvas.Clear()
+
+            text_color = graphics.Color(self.__global_font_color[0], self.__global_font_color[1],
+                                        self.__global_font_color[2])
 
             self.__render_date_and_time(font_big, font_small, text_color)
             self.__render_weather(font_small, text_color)
@@ -77,7 +93,10 @@ class InfoDisplay:
         for x in range(1, 12):
             for y in range(1, 12):
                 r, g, b = gif.get_pixel(x, y, frame)
-                self.display.canvas.SetPixel(x - 1, y + 20, r / 10, g / 10, b / 10)
+
+                self.display.canvas.SetPixel(x - 1, y + 20, int(r * (self.__global_font_color[0] / 255)),
+                                             int(g * (self.__global_font_color[1] / 255)),
+                                             int(b * (self.__global_font_color[2] / 255)))
 
         return delay, gif_counter
 
