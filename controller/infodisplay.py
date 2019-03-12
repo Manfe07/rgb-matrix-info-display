@@ -52,7 +52,7 @@ class InfoDisplay:
                 self.__currentSong = r1.json()['state'] + ' - ' + r2.json()['state']
 
                 time.sleep(5)
-            except requests.exceptions.RequestException:
+            except Exception:
                 pass
 
     def __render_loop(self):
