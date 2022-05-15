@@ -212,7 +212,7 @@ class InfoDisplay:
                 text_length = text_length_b
 
         marqueetext_pos -= 0.5
-        if marqueetext_pos + text_length < 20:
+        if marqueetext_pos + text_length < 21:
             marqueetext_pos = self.display.canvas.width
 
         return marqueetext_pos
