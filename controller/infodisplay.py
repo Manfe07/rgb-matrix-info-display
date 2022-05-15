@@ -14,6 +14,7 @@ from controller.matrix import MatrixController
 from controller.gifparser import GifParser
 from controller.mqttcontroller import MqttController
 from controller.musicHandler import MusicHandler
+from controller.notificationHandler import NotificationHandler
 from controller.weather import Weather
 from controller.gif_slicer import GifSlicer
 
@@ -25,6 +26,7 @@ class InfoDisplay:
     __global_font_color = (255, 255, 255)
     __screen = 1
     __power = True
+    __img = Image.new("RGB", (32, 32))
 
     def __init__(self, matrix_controller: MatrixController):
         self.display = matrix_controller
@@ -35,12 +37,15 @@ class InfoDisplay:
         self.weather.image_path = os.path.dirname(os.path.realpath(__file__)) + '/../assets/weather/'
         self.music = MusicHandler()
         self.music.image_path = os.path.dirname(os.path.realpath(__file__)) + '/../assets/cover.jpg'
+        self.notificationHandler = NotificationHandler(self.__load_font('6x10.bdf'),self.display.canvas)
         self.gifSlicer = GifSlicer()
         self.gifSlicer.cacheFolder = os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/tmp'
         mqtt = MqttController()
         mqtt.subscribe_to_topic('smarthome/display/screen', self.__callback_set_screen)
         mqtt.subscribe_to_topic('smarthome/display/cmnd', self.__callback_set_cmnd)
         mqtt.subscribe_to_topic('smarthome/display/play_gif', self.__callback_play_gif)
+        mqtt.subscribe_to_topic('smarthome/display/show_img', self.__callback_show_img)
+        mqtt.subscribe_to_topic('smarthome/display/notification', self.notificationHandler.callback_handle_msg)
         mqtt.subscribe_to_topic('weather', self.weather.parseData)
         mqtt.subscribe_to_topic('newsticker/ntv', self.__callback_newsHandler)
         mqtt.subscribe_to_topic('smarthome/sonos/wohnzimmer', self.music.parseMsg)
@@ -77,11 +82,26 @@ class InfoDisplay:
         data = json.loads(msg.decode('UTF-8'))
         path = data.get("path")
         if(path):
-            #self.gifSlicer.loadGif(os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/hamster.gif')
             if(self.gifSlicer.loadGif(path) > 0):
                 self.__screen = 2
             else:
                 self.__screen = 1
+
+
+    def __callback_show_img(self, msg):
+        data = json.loads(msg.decode('UTF-8'))
+        path = data.get("path")
+        if(path):
+            try:
+                image = Image.open(path)
+                image = image.convert('RGB')
+                image.thumbnail((64,32),Image.ANTIALIAS)
+                self.__img = image
+                self.__screen = 3
+            except Exception as e:
+                print(e)
+                self.__screen = 1
+
 
     def __callback_getWeather(self, msg):
         weather = json.loads(msg.decode('UTF-8'))
@@ -121,8 +141,22 @@ class InfoDisplay:
             text_color = graphics.Color(self.__global_font_color[0], self.__global_font_color[1],
                                         self.__global_font_color[2])
             if self.__power:
+
+                # First check for Notification
+                if(self.notificationHandler.notification):
+                    self.__render_time(font_big, text_color)
+                    self.notificationHandler.renderNotification(self.display.canvas)
+
+                # Screen 3 Render Image
+                elif(self.__screen == 3):
+                    try:
+                        self.display.canvas.SetImage(self.__img, unsafe=False)
+                    except Exception as e:
+                        print(e)
+
+
                 # Screen 2 GIF
-                if(self.__screen == 2):
+                elif(self.__screen == 2):
                     #gif_delay, gif_counter = self.__reader_gif_frame(gif_delay, gif, gif_counter,[64,32])
                     #self.gifSlicer.loadGif(os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/64x32/coke.gif')
                     if(self.gifSlicer.nImages >= 1):
@@ -138,7 +172,7 @@ class InfoDisplay:
                         self.__render_song_pos(text_color)
 
                     else:
-                        self.__render_date_and_time(font_big, font_small, text_color)
+                        self.__render_time(font_big, text_color)
                         self.__render_weather(font_small, graphics.Color(255,255,0))
                         marquee_news_pos = self.__render_marquee_news(font_small, marquee_news_pos, graphics.Color(255,0,0))
                         #gif_delay, gif_counter = self.__reader_gif_frame(gif_delay, gif, gif_counter)
@@ -198,7 +232,7 @@ class InfoDisplay:
                 text_length = text_length_b
 
         marqueetext_pos -= 0.5
-        if marqueetext_pos + text_length < 20:
+        if marqueetext_pos + text_length < 21:
             marqueetext_pos = self.display.canvas.width
 
         return marqueetext_pos
@@ -210,7 +244,7 @@ class InfoDisplay:
         self.display.canvas.SetImage(self.weather.icon, offset_x = 5, offset_y = 12, unsafe=False)
 
 
-    def __render_date_and_time(self, font_big, font_small, text_color):
+    def __render_time(self, font_big, text_color):
         time_string = time.strftime('%H:%M:%S')
         graphics.DrawText(self.display.canvas, font_big, 0, 11, text_color, time_string)
         #date_string = time.strftime('%d/%m')

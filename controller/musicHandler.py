@@ -25,7 +25,7 @@ class MusicHandler:
             image = Image.open(self.image_path)
             image = image.convert('RGB')
             image.load()
-            image.thumbnail((20,20),Image.ANTIALIAS)
+            image.thumbnail((21,21),Image.ANTIALIAS)
             self.cover = image
             self.__oldImageURL = url
 
