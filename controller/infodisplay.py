@@ -80,7 +80,6 @@ class InfoDisplay:
         data = json.loads(msg.decode('UTF-8'))
         path = data.get("path")
         if(path):
-            #self.gifSlicer.loadGif(os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/hamster.gif')
             if(self.gifSlicer.loadGif(path) > 0):
                 self.__screen = 2
             else:
@@ -129,9 +128,14 @@ class InfoDisplay:
                 if(self.notificationHandler.notification):
                     self.__render_time(font_big, text_color)
                     self.notificationHandler.renderNotification(self.display.canvas)
-                    
 
-                # Screen 2 GIF                        
+                # Screen 3 OnAir
+                elif(self.__screen == 3):
+                    image = Image.open(os.path.dirname(os.path.realpath(__file__)) + '/../assets/img/onAir.png')
+                    image = image.convert('RGB')
+                    self.display.canvas.SetImage(image, unsafe=False)
+
+                # Screen 2 GIF
                 elif(self.__screen == 2):
                     #gif_delay, gif_counter = self.__reader_gif_frame(gif_delay, gif, gif_counter,[64,32])
                     #self.gifSlicer.loadGif(os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/64x32/coke.gif')
