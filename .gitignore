@@ -1,3 +1,8 @@
 .idea/
 .vscode/
 venv/
+__pycache__/
+
+assets/cover.jpg
+assets/gifs/tmp/*
+assets/gifs/custom/*

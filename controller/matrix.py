@@ -10,13 +10,14 @@ class MatrixController:
     def __init__(self):
         self.options = RGBMatrixOptions()
         self.options.rows = 32
-        self.options.gpio_slowdown = 2
+        self.options.cols = 64
+        #self.options.gpio_slowdown = 4
         # self.options.pwm_bits = 8
-        # self.options.pwm_lsb_nanoseconds = 100
-        # self.options.disable_hardware_pulsing = 0
-        self.options.chain_length = 2
-        self.options.parallel = 1
-        self.options.hardware_mapping = 'regular'
+        self.options.pwm_lsb_nanoseconds = 310
+        #self.options.disable_hardware_pulsing = 1
+        #self.options.chain_length = 2
+        #self.options.parallel = 1
+        self.options.hardware_mapping = 'adafruit-hat'
 
         self.matrix = RGBMatrix(options=self.options)
         self.canvas = self.matrix.CreateFrameCanvas()

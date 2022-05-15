@@ -5,10 +5,10 @@ from PIL import Image, ImageSequence, GifImagePlugin
 
 
 class GifParser:
-    def __init__(self, filename):
+    def __init__(self, filename, size = (32,32)):
         self.im = Image.open(filename)
         index = 0
-        size = 12, 12
+        #size = 32, 32
 
         self.data = list()
         for frame in ImageSequence.Iterator(self.im):
