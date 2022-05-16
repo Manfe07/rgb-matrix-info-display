@@ -26,6 +26,7 @@ class InfoDisplay:
     __global_font_color = (255, 255, 255)
     __screen = 1
     __power = True
+    __img = Image.new("RGB", (32, 32))
 
     def __init__(self, matrix_controller: MatrixController):
         self.display = matrix_controller
@@ -43,6 +44,7 @@ class InfoDisplay:
         mqtt.subscribe_to_topic('smarthome/display/screen', self.__callback_set_screen)
         mqtt.subscribe_to_topic('smarthome/display/cmnd', self.__callback_set_cmnd)
         mqtt.subscribe_to_topic('smarthome/display/play_gif', self.__callback_play_gif)
+        mqtt.subscribe_to_topic('smarthome/display/show_img', self.__callback_show_img)
         mqtt.subscribe_to_topic('smarthome/display/notification', self.notificationHandler.callback_handle_msg)
         mqtt.subscribe_to_topic('weather', self.weather.parseData)
         mqtt.subscribe_to_topic('newsticker/ntv', self.__callback_newsHandler)
@@ -84,6 +86,22 @@ class InfoDisplay:
                 self.__screen = 2
             else:
                 self.__screen = 1
+
+
+    def __callback_show_img(self, msg):
+        data = json.loads(msg.decode('UTF-8'))
+        path = data.get("path")
+        if(path):
+            try:
+                image = Image.open(path)
+                image = image.convert('RGB')
+                image.thumbnail((64,32),Image.ANTIALIAS)
+                self.__img = image
+                self.__screen = 3
+            except Exception as e:
+                print(e)
+                self.__screen = 1
+
 
     def __callback_getWeather(self, msg):
         weather = json.loads(msg.decode('UTF-8'))
@@ -129,11 +147,13 @@ class InfoDisplay:
                     self.__render_time(font_big, text_color)
                     self.notificationHandler.renderNotification(self.display.canvas)
 
-                # Screen 3 OnAir
+                # Screen 3 Render Image
                 elif(self.__screen == 3):
-                    image = Image.open(os.path.dirname(os.path.realpath(__file__)) + '/../assets/img/onAir.png')
-                    image = image.convert('RGB')
-                    self.display.canvas.SetImage(image, unsafe=False)
+                    try:
+                        self.display.canvas.SetImage(self.__img, unsafe=False)
+                    except Exception as e:
+                        print(e)
+
 
                 # Screen 2 GIF
                 elif(self.__screen == 2):
