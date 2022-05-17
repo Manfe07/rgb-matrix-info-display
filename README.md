@@ -17,3 +17,14 @@ This project sets up an info display using a LED Matrix Display from Sparkfun, A
 ```bash
 python3 -u main.py
 ```
+
+
+## ArtNet
+If you want to use the ArtNet function first activate it in the config.yaml and choose the dmx universe
+```yaml
+[ArtNet]
+enabled = true
+universe = 0
+```
+
+The `ArtNet.addLight(addr, x, y, w, h)` function will create a 3-Channel RGB Fixture with the desiered dmx-addres, position and pixel size.
