@@ -149,7 +149,7 @@ class InfoDisplay:
                     self.notificationHandler.renderNotification(self.display.canvas)
 
                 # Screen 4 ArtNet
-                if((self.__screen == 4) and self.__config["ArtNet"]["enabled"]):
+                elif((self.__screen == 4) and self.__config["ArtNet"]["enabled"]):
                     self.dmx.createImage()
                     self.display.canvas.SetImage(self.dmx.image, unsafe=False)
 
