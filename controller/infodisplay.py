@@ -12,7 +12,6 @@ from datetime import datetime
 
 from rgbmatrix import graphics
 from controller.matrix import MatrixController
-from controller.gifparser import GifParser
 from controller.mqttcontroller import MqttController
 from controller.musicHandler import MusicHandler
 from controller.notificationHandler import NotificationHandler
@@ -48,7 +47,7 @@ class InfoDisplay:
             self.dmx = ArtNet(universe=self.__config["ArtNet"]["universe"])
             self.dmx.addLight(1, 0, 0, 64, 32)
 
-        mqtt = MqttController(self.__config["MQTT"]["host"], self.__config["MQTT"]["host"])
+        mqtt = MqttController(self.__config["MQTT"]["host"], int(self.__config["MQTT"]["port"]))
         mqtt.subscribe_to_topic('smarthome/display/screen', self.__callback_set_screen)
         mqtt.subscribe_to_topic('smarthome/display/cmnd', self.__callback_set_cmnd)
         mqtt.subscribe_to_topic('smarthome/display/play_gif', self.__callback_play_gif)
