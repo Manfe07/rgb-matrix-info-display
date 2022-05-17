@@ -6,4 +6,4 @@ __pycache__/
 assets/cover.jpg
 assets/gifs/tmp/*
 assets/gifs/custom/*
-*.save
+*.save*
