@@ -16,6 +16,7 @@ from controller.mqttcontroller import MqttController
 from controller.musicHandler import MusicHandler
 from controller.weather import Weather
 from controller.gif_slicer import GifSlicer
+from controller.artNet import ArtNet
 
 class InfoDisplay:
     __newsText = ''
@@ -37,6 +38,17 @@ class InfoDisplay:
         self.music.image_path = os.path.dirname(os.path.realpath(__file__)) + '/../assets/cover.jpg'
         self.gifSlicer = GifSlicer()
         self.gifSlicer.cacheFolder = os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/tmp'
+
+        self.dmx = ArtNet()
+        self.dmx.addLight(1, 0, 0, 16, 16)
+        self.dmx.addLight(4, 16, 0, 16, 16)
+        self.dmx.addLight(7, 32, 0, 16, 16)
+        self.dmx.addLight(10, 48, 0, 16, 16)
+        self.dmx.addLight(13, 0, 16, 16, 16)
+        self.dmx.addLight(16, 16, 16, 16, 16)
+        self.dmx.addLight(19, 32, 16, 16, 16)
+        self.dmx.addLight(22, 48, 16, 16, 16)
+
         mqtt = MqttController()
         mqtt.subscribe_to_topic('smarthome/display/screen', self.__callback_set_screen)
         mqtt.subscribe_to_topic('smarthome/display/cmnd', self.__callback_set_cmnd)
@@ -121,8 +133,19 @@ class InfoDisplay:
             text_color = graphics.Color(self.__global_font_color[0], self.__global_font_color[1],
                                         self.__global_font_color[2])
             if self.__power:
+
+
+                if(self.__screen == 3):
+                    #image = Image.new("RGB",(32,22),(255,255,0))
+                    #im = Image.new(mode="RGB", size=(20, 20))
+                    #image.paste((255,10,50),[0,0,63,31])
+                    #self.display.canvas.SetImage(im)
+                    self.dmx.createImage()
+                    self.display.canvas.SetImage(self.dmx.image, unsafe=False)
+                    #self.display.canvas.SetImage(self.music.cover, unsafe=False)
+
                 # Screen 2 GIF
-                if(self.__screen == 2):
+                elif(self.__screen == 2):
                     #gif_delay, gif_counter = self.__reader_gif_frame(gif_delay, gif, gif_counter,[64,32])
                     #self.gifSlicer.loadGif(os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/64x32/coke.gif')
                     if(self.gifSlicer.nImages >= 1):
