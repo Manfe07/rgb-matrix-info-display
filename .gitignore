@@ -6,5 +6,5 @@ __pycache__/
 config.yaml
 assets/cover.jpg
 assets/gifs/tmp/*
-assets/gifs/custom/*
+assets/custom/*
 *.save*
