@@ -10,13 +10,13 @@ class MqttController:
 
     topic_handlers = None
 
-    def __init__(self):
+    def __init__(self, host, port):
         self.topic_handlers = collections.defaultdict(set)
         self.mqtt_client = mqtt.Client()
         self.mqtt_client.on_connect = self.__on_connect
         self.mqtt_client.on_message = self.__on_message
 
-        self.mqtt_client.connect("192.168.20.72", 1883, 60)
+        self.mqtt_client.connect(host, port, 60)
 
         self.mqtt_client.loop_start()
 
