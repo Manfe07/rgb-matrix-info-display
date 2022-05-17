@@ -18,9 +18,9 @@ from controller.notificationHandler import NotificationHandler
 from controller.weather import Weather
 from controller.gif_slicer import GifSlicer
 from controller.artNet import ArtNet
+from controller.textScroller import TextScroller
 
 class InfoDisplay:
-    __newsText = ''
     __currentSong = 'Hier koennte Ihre Werbung stehen.   '
     __weatherTemp = None
     __brightness = 50   # brightness is set in from 0% - 100%
@@ -42,6 +42,9 @@ class InfoDisplay:
         self.notificationHandler = NotificationHandler(self.__load_font('6x10.bdf'),self.display.canvas)
         self.gifSlicer = GifSlicer()
         self.gifSlicer.cacheFolder = os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/tmp'
+
+        self.newsText = TextScroller(self.__load_font('5x7.bdf'))
+        self.songTitle = TextScroller(self.__load_font('6x10.bdf'))
 
         if(self.__config["ArtNet"]["enabled"]):
             self.dmx = ArtNet(universe=self.__config["ArtNet"]["universe"])
@@ -119,7 +122,7 @@ class InfoDisplay:
             text_buffer = " <-> "
             for post in articles:
                 text_buffer += post["title"][0] + " <-> "
-            self.__newsText = text_buffer
+            self.newsText.setText(text_buffer)
         except Exception as e:
             print(e)
 
@@ -128,8 +131,6 @@ class InfoDisplay:
         font_medium = self.__load_font('6x10.bdf')
         font_small = self.__load_font('5x7.bdf')
 
-        marquee_news_pos = self.display.canvas.width
-        marquee_title_pos = self.display.canvas.width
         marquee_songInfo_pos = self.display.canvas.width
 
 
@@ -146,12 +147,12 @@ class InfoDisplay:
                 if(self.notificationHandler.notification):
                     self.__render_time(font_big, text_color)
                     self.notificationHandler.renderNotification(self.display.canvas)
-                
+
                 # Screen 4 ArtNet
                 if((self.__screen == 4) and self.__config["ArtNet"]["enabled"]):
                     self.dmx.createImage()
                     self.display.canvas.SetImage(self.dmx.image, unsafe=False)
-                
+
                 # Screen 3 Render Image
                 elif(self.__screen == 3):
                     try:
@@ -162,15 +163,14 @@ class InfoDisplay:
 
                 # Screen 2 GIF
                 elif(self.__screen == 2):
-                    #gif_delay, gif_counter = self.__reader_gif_frame(gif_delay, gif, gif_counter,[64,32])
-                    #self.gifSlicer.loadGif(os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/64x32/coke.gif')
                     if(self.gifSlicer.nImages >= 1):
                         self.display.canvas.SetImage(self.gifSlicer.getImage(), unsafe=False)
 
                 # Screen 1 and 0 Default
                 else:
                     if(self.music.state == "playing")and(self.music.title)and(self.__screen == 1):
-                        marquee_title_pos = self.__render_marquee_title(font_medium, marquee_title_pos, text_color)
+                        self.songTitle.setText(self.music.title)
+                        self.songTitle.renderText(self.display.canvas, 29, color=[255,255,255])
                         marquee_songInfo_pos = self.__render_marquee_songInfo(font_small, marquee_songInfo_pos, graphics.Color(255,255,25))
                         self.__render_cover()
                         self.__render_song_pos(text_color)
@@ -178,7 +178,7 @@ class InfoDisplay:
                     else:
                         self.__render_time(font_big, text_color)
                         self.__render_weather(font_small, graphics.Color(255,255,0))
-                        marquee_news_pos = self.__render_marquee_news(font_small, marquee_news_pos, graphics.Color(255,0,0))
+                        self.newsText.renderText(self.display.canvas, y=30, color=[255,0,0])
 
             self.display.canvas = self.display.matrix.SwapOnVSync(self.display.canvas)
             time.sleep(0.03)
@@ -203,24 +203,6 @@ class InfoDisplay:
                                              int(b * (self.__global_font_color[2] / 255)))
 
         return delay, gif_counter
-
-    def __render_marquee_news(self, font_small, marqueetext_pos, text_color):
-        text_length = graphics.DrawText(self.display.canvas, font_small, marqueetext_pos, 30, text_color,
-                                        self.__newsText)
-        marqueetext_pos -= 1
-        if marqueetext_pos + text_length < 0:
-            marqueetext_pos = self.display.canvas.width
-
-        return marqueetext_pos
-
-    def __render_marquee_title(self, font_big, marqueetext_pos, text_color):
-        text_length = graphics.DrawText(self.display.canvas, font_big, marqueetext_pos, 29, text_color,
-                                        self.music.title)
-        marqueetext_pos -= 1
-        if marqueetext_pos + text_length < 0:
-            marqueetext_pos = self.display.canvas.width
-
-        return marqueetext_pos
 
 
     def __render_marquee_songInfo(self, font_small, marqueetext_pos, text_color):
