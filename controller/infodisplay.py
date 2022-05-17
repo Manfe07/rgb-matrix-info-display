@@ -4,6 +4,7 @@ import time
 import _thread
 import requests
 import json
+import configparser
 
 from PIL import Image
 from PIL import ImageDraw
@@ -17,6 +18,7 @@ from controller.musicHandler import MusicHandler
 from controller.notificationHandler import NotificationHandler
 from controller.weather import Weather
 from controller.gif_slicer import GifSlicer
+from controller.artNet import ArtNet
 
 class InfoDisplay:
     __newsText = ''
@@ -26,12 +28,13 @@ class InfoDisplay:
     __global_font_color = (255, 255, 255)
     __screen = 1
     __power = True
-    __img = Image.new("RGB", (32, 32))
+    __config = configparser.ConfigParser()
 
-    def __init__(self, matrix_controller: MatrixController):
+    def __init__(self, config, matrix_controller: MatrixController):
+        self.__config = config
         self.display = matrix_controller
+
         _thread.start_new_thread(self.__render_loop, ())
-#        _thread.start_new_thread(self.__external_data_fetcher, ())
 
         self.weather = Weather()
         self.weather.image_path = os.path.dirname(os.path.realpath(__file__)) + '/../assets/weather/'
@@ -40,6 +43,11 @@ class InfoDisplay:
         self.notificationHandler = NotificationHandler(self.__load_font('6x10.bdf'),self.display.canvas)
         self.gifSlicer = GifSlicer()
         self.gifSlicer.cacheFolder = os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/tmp'
+
+        if(self.__config["ArtNet"]["enabled"]):
+            self.dmx = ArtNet(universe=self.__config["ArtNet"]["universe"])
+            self.dmx.addLight(1, 0, 0, 64, 32)
+
         mqtt = MqttController()
         mqtt.subscribe_to_topic('smarthome/display/screen', self.__callback_set_screen)
         mqtt.subscribe_to_topic('smarthome/display/cmnd', self.__callback_set_cmnd)
@@ -65,7 +73,6 @@ class InfoDisplay:
 
     def __callback_set_cmnd(self, msg):
         data = json.loads(msg.decode('UTF-8'))
-        #print(data)
         color = data.get("color", None)
         brightness = data.get("brightness", None)
         power = data.get("power", None)
@@ -105,7 +112,6 @@ class InfoDisplay:
 
     def __callback_getWeather(self, msg):
         weather = json.loads(msg.decode('UTF-8'))
-        #print(weather["tempc"])
         self.__weatherTemp = float(weather["tempc"])
 
     def __callback_newsHandler(self, msg):
@@ -128,11 +134,6 @@ class InfoDisplay:
         marquee_songInfo_pos = self.display.canvas.width
 
 
-        gif = GifParser(os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/64x32/coke.gif', size = (64,32))
-        gif_counter = 0
-        gif_delay = 0
-
-        #self.gifSlicer.loadGif(os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/64x32/coke.gif')
         self.gifSlicer.loadGif(os.path.dirname(os.path.realpath(__file__)) + '/../assets/gifs/hamster.gif')
 
         while True:
@@ -146,7 +147,12 @@ class InfoDisplay:
                 if(self.notificationHandler.notification):
                     self.__render_time(font_big, text_color)
                     self.notificationHandler.renderNotification(self.display.canvas)
-
+                
+                # Screen 4 ArtNet
+                if((self.__screen == 4) and self.__config["ArtNet"]["enabled"]):
+                    self.dmx.createImage()
+                    self.display.canvas.SetImage(self.dmx.image, unsafe=False)
+                
                 # Screen 3 Render Image
                 elif(self.__screen == 3):
                     try:
@@ -165,7 +171,6 @@ class InfoDisplay:
                 # Screen 1 and 0 Default
                 else:
                     if(self.music.state == "playing")and(self.music.title)and(self.__screen == 1):
-                        #if(False):
                         marquee_title_pos = self.__render_marquee_title(font_medium, marquee_title_pos, text_color)
                         marquee_songInfo_pos = self.__render_marquee_songInfo(font_small, marquee_songInfo_pos, graphics.Color(255,255,25))
                         self.__render_cover()
@@ -175,7 +180,6 @@ class InfoDisplay:
                         self.__render_time(font_big, text_color)
                         self.__render_weather(font_small, graphics.Color(255,255,0))
                         marquee_news_pos = self.__render_marquee_news(font_small, marquee_news_pos, graphics.Color(255,0,0))
-                        #gif_delay, gif_counter = self.__reader_gif_frame(gif_delay, gif, gif_counter)
 
             self.display.canvas = self.display.matrix.SwapOnVSync(self.display.canvas)
             time.sleep(0.03)
