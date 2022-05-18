@@ -19,6 +19,21 @@ from controller.weather import Weather
 from controller.gif_slicer import GifSlicer
 from controller.artNet import ArtNet
 from controller.textScroller import TextScroller
+from controller.playlist import Playlist
+
+########
+#
+# Screens
+#
+# 0 - News and Weather
+# 1 - Music or Screen 0
+# 2 - GIFs
+# 3 - Images
+#
+# 100 - enable Playlist (over MQTT)
+#
+########
+
 
 class InfoDisplay:
     __currentSong = 'Hier koennte Ihre Werbung stehen.   '
@@ -28,6 +43,7 @@ class InfoDisplay:
     __screen = 1
     __power = True
     __config = configparser.ConfigParser()
+    __playlistEnabled = False
 
     def __init__(self, config, matrix_controller: MatrixController):
         self.__config = config
@@ -45,6 +61,8 @@ class InfoDisplay:
 
         self.newsText = TextScroller(self.__load_font('5x7.bdf'))
         self.songTitle = TextScroller(self.__load_font('6x10.bdf'))
+
+        self.playlist = Playlist(10,[0,1,2,3])
 
         if(self.__config["ArtNet"]["enabled"]):
             self.dmx = ArtNet(universe=self.__config["ArtNet"]["universe"])
@@ -69,7 +87,12 @@ class InfoDisplay:
 
     def __callback_set_screen(self, msg):
         try:
-            self.__screen = int(msg.decode('UTF-8'))
+            target = int(msg.decode('UTF-8'))
+
+            if (target == 100):
+                self.__playlistEnabled = True
+
+            self.__screen = target
         except:
             self.__screen = 0
 
@@ -142,6 +165,8 @@ class InfoDisplay:
             text_color = graphics.Color(self.__global_font_color[0], self.__global_font_color[1],
                                         self.__global_font_color[2])
             if self.__power:
+                if(self.__playlistEnabled):
+                    self.__screen = self.playlist.getScreen()
 
                 # First check for Notification
                 if(self.notificationHandler.notification):
