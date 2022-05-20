@@ -16,7 +16,13 @@ class MqttController:
         self.mqtt_client.on_connect = self.__on_connect
         self.mqtt_client.on_message = self.__on_message
 
-        self.mqtt_client.connect(host, port, 60)
+        try:
+            self.mqtt_client.connect(host, port, 60)
+
+        except Exception as e:
+            print(e)
+            print("MQTT-Error - try to connect to local mqtt-server...")
+            self.mqtt_client.connect("localhost", 1883, 60)
 
         self.mqtt_client.loop_start()
 
