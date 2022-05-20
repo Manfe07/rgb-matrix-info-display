@@ -5,3 +5,7 @@ port = 1883
 [ArtNet]
 enabled = false
 universe = 0
+
+[Misc]
+startScreen = 1
+autoPlaylist = false

@@ -29,6 +29,8 @@ from controller.playlist import Playlist
 # 1 - Music or Screen 0
 # 2 - GIFs
 # 3 - Images
+# 4 - Artnet
+# 5 - Sprittpreise
 #
 # 100 - enable Playlist (over MQTT)
 #
@@ -36,18 +38,22 @@ from controller.playlist import Playlist
 
 
 class InfoDisplay:
+    __config = configparser.ConfigParser()
     __currentSong = 'Hier koennte Ihre Werbung stehen.   '
     __weatherTemp = None
     __brightness = 50   # brightness is set in from 0% - 100%
     __global_font_color = (255, 255, 255)
     __screen = 1
     __power = True
-    __config = configparser.ConfigParser()
     __playlistEnabled = False
 
     def __init__(self, config, matrix_controller: MatrixController):
         self.__config = config
         self.display = matrix_controller
+
+        self.__screen = self.__config["Misc"]["startScreen"]
+        self.__plaxlistEnabled = self.__config["Misc"]["autoPlaylist"]
+
 
         _thread.start_new_thread(self.__render_loop, ())
 
@@ -61,8 +67,9 @@ class InfoDisplay:
 
         self.newsText = TextScroller(self.__load_font('5x7.bdf'))
         self.songTitle = TextScroller(self.__load_font('6x10.bdf'))
+        self.sprittpreiseText = TextScroller(self.__load_font('5x7.bdf'))
 
-        self.playlist = Playlist(10,[0,1,2,3])
+        self.playlist = Playlist(10,[1,5])
 
         if(self.__config["ArtNet"]["enabled"]):
             self.dmx = ArtNet(universe=self.__config["ArtNet"]["universe"])
@@ -77,7 +84,7 @@ class InfoDisplay:
         mqtt.subscribe_to_topic('weather', self.weather.parseData)
         mqtt.subscribe_to_topic('newsticker/ntv', self.__callback_newsHandler)
         mqtt.subscribe_to_topic('smarthome/sonos/wohnzimmer', self.music.parseMsg)
-        print('Render thread is running.')
+        mqtt.subscribe_to_topic('stats/sprittpreise', self.__callback_sprittpreise)
 
     @staticmethod
     def __load_font(filename):
@@ -91,6 +98,8 @@ class InfoDisplay:
 
             if (target == 100):
                 self.__playlistEnabled = True
+            else:
+                self.__playlistEnabled = False
 
             self.__screen = target
         except:
@@ -119,6 +128,15 @@ class InfoDisplay:
             else:
                 self.__screen = 1
 
+    def __callback_sprittpreise(self, msg):
+        try:
+            data = json.loads(msg.decode('UTF-8'))
+            text_buffer = 'E10: %1.2f€   ' % data["e10"]
+            text_buffer += 'Diesel: %1.2f€' % data["diesel"]
+            self.sprittpreiseText.setText(text_buffer)
+        except Exception as e:
+            print("Sprittpreis Error:")
+            print(e)
 
     def __callback_show_img(self, msg):
         data = json.loads(msg.decode('UTF-8'))
@@ -130,6 +148,7 @@ class InfoDisplay:
                 image.thumbnail((64,32),Image.ANTIALIAS)
                 self.__img = image
                 self.__screen = 3
+
             except Exception as e:
                 print(e)
                 self.__screen = 1
@@ -150,6 +169,7 @@ class InfoDisplay:
             print(e)
 
     def __render_loop(self):
+        print('Render thread is running.')
         font_big = self.__load_font('8x13B.bdf')
         font_medium = self.__load_font('6x10.bdf')
         font_small = self.__load_font('5x7.bdf')
@@ -172,6 +192,12 @@ class InfoDisplay:
                 if(self.notificationHandler.notification):
                     self.__render_time(font_big, text_color)
                     self.notificationHandler.renderNotification(self.display.canvas)
+
+                # Sprittpreise
+                elif(self.__screen == 5):
+                    self.__render_time(font_big, text_color)
+                    self.sprittpreiseText.renderText(self.display.canvas, y=20 , color=[255,255,0])
+                    self.newsText.renderText(self.display.canvas, y=30, color=[255,0,0])
 
                 # Screen 4 ArtNet
                 elif((self.__screen == 4) and self.__config["ArtNet"]["enabled"]):
